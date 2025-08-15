@@ -23,6 +23,8 @@ use serde_json::{json, Value};
 // COLLECTION TYPES
 use std::collections::{HashSet, HashMap};
 
+use crate::options::Automation;
+
 #[derive(Clone)]
 pub struct ToolContext
 {
@@ -109,23 +111,35 @@ pub fn configure_tool_context(tool_context: &mut ToolContext,
 
 	// STRING ONLY PRINTING
 	let string_only_key: String = String::from("stringonly");
-	tool_context.command_parameters.insert(string_only_key, String::from("--string-only"));
+
+	if options.string_only
+	{
+		tool_context.command_parameters.insert(string_only_key, String::from("--string-only"));
+	}
 
 	// NO CLEAN?
 	let no_clean_key: String = String::from("noclean");
-	tool_context.command_parameters.insert(no_clean_key, String::from("--noclean"));
+
+	if options.no_clean
+	{
+		tool_context.command_parameters.insert(no_clean_key, String::from("--noclean"));
+	}
 
 	// SUPPORTED
 	let supported_key: String = String::from("supported");
-	tool_context.command_parameters.insert(supported_key, String::from("--supported"));
+
+	if options.list_supported_mode
+	{
+		tool_context.command_parameters.insert(supported_key, String::from("--supported"));
+	}
 
 	// GIT
 	let git_key: String = String::from("git");
-	tool_context.command_parameters.insert(git_key, String::from("--git"));
 
-	// FEATURE
-	let feature_key: String = String::from("feature");
-	let feature_available: bool = options.feature.is_some();
+	if options.automation == Automation::Git
+	{
+		tool_context.command_parameters.insert(git_key, String::from("--git"));
+	}
 
 	// CONFIG SET
 	let config_set_key: String = String::from("variable_set");
@@ -143,26 +157,22 @@ pub fn configure_tool_context(tool_context: &mut ToolContext,
 	{
 		tool_context.command_parameters.insert(config_get_all_key, String::from("--get-all"));
 	}
+
+	// FEATURE
+	let feature_key: String = String::from("feature");
+	let feature_available: bool = options.feature.is_some();
 	
 	if feature_available
 	{
 		let feature: String = options.feature.clone().unwrap();
 		tool_context.command_parameters.insert(feature_key, feature);
 	}
-	else
-	{
-		if !options.list_supported_mode 
-			&& options.config_set.is_none() 
-			&& !options.config_get_all
-		{
-			print!("ERROR: When running manifest generation, a feature branch name must be provided.\n");
-			tool_context.should_quit = true;
-		}
-	}
 }
 
 fn main() 
 {
+	let start_time: Instant = Instant::now(); // Begin tracking program run time
+
 	// Command line arguments and program configuration
 	let options: options::Opt = options::Opt::new();
 
@@ -200,5 +210,25 @@ fn main()
 
 	// Main logic for manifest generation finally proceeds!
 	manifest::generate_manifest(general_context, tool_context);
+
+	// The total run time of interest ends here, and the * 1000.0 converts this from f64 
+	// seconds expressed as milliseconds.
+	let total_time: f64 = start_time.elapsed().as_secs_f64() * 1000.0;
+
+	let total_time_message = format!("Program completed in {}ms\n", total_time);
+	tool_context.time_snapshots.push(total_time_message);
+
+	// Print performance info based on whatever was pushed into the Vec<String> on the 
+	// tool_context.time_snapshots collection
+	general_context.logger.log_info("\n\n== Time Snapshots ==\n\n");
+	for time_snapshot in &tool_context.time_snapshots
+	{
+		general_context.logger.log_info(time_snapshot);
+	}
+
+	// This can be commented out or otherwise flagged into a paremeter if it is not necessary
+	// to create a log.txt file at the end of the run to hold whatever was printed to the
+	// terminal from the general context logger.
+	general_context.logger.publish();
 
 }

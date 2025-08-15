@@ -283,9 +283,4 @@ pub fn configure(general_context: &Context, tool_context: &mut ToolContext)
 		tool_context.should_quit = true;
 		return;
 	}
-
-	// Config commands should be completed by this point
-	// and we should not allow the program to continue
-	// once we go back into main
-	tool_context.should_quit = true;
 }
