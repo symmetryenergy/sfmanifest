@@ -23,6 +23,8 @@ use serde_json::{json, Value};
 // COLLECTION TYPES
 use std::collections::{HashSet, HashMap};
 
+use crate::options::Automation;
+
 #[derive(Clone)]
 pub struct ToolContext
 {
@@ -109,19 +111,35 @@ pub fn configure_tool_context(tool_context: &mut ToolContext,
 
 	// STRING ONLY PRINTING
 	let string_only_key: String = String::from("stringonly");
-	tool_context.command_parameters.insert(string_only_key, String::from("--string-only"));
+
+	if options.string_only
+	{
+		tool_context.command_parameters.insert(string_only_key, String::from("--string-only"));
+	}
 
 	// NO CLEAN?
 	let no_clean_key: String = String::from("noclean");
-	tool_context.command_parameters.insert(no_clean_key, String::from("--noclean"));
+
+	if options.no_clean
+	{
+		tool_context.command_parameters.insert(no_clean_key, String::from("--noclean"));
+	}
 
 	// SUPPORTED
 	let supported_key: String = String::from("supported");
-	tool_context.command_parameters.insert(supported_key, String::from("--supported"));
+
+	if options.list_supported_mode
+	{
+		tool_context.command_parameters.insert(supported_key, String::from("--supported"));
+	}
 
 	// GIT
 	let git_key: String = String::from("git");
-	tool_context.command_parameters.insert(git_key, String::from("--git"));
+
+	if options.automation == Automation::Git
+	{
+		tool_context.command_parameters.insert(git_key, String::from("--git"));
+	}
 
 	// CONFIG SET
 	let config_set_key: String = String::from("variable_set");
@@ -155,8 +173,6 @@ fn main()
 {
 	let start_time: Instant = Instant::now(); // Begin tracking program run time
 
-	print!("Running sfmanifest...\n");
-
 	// Command line arguments and program configuration
 	let options: options::Opt = options::Opt::new();
 
@@ -171,7 +187,6 @@ fn main()
 
 	configure_tool_context(tool_context, &options);
 
-	print!("Past configure_tool_context...\n");
 	if tool_context.should_quit
 	{ return; }
 
@@ -184,7 +199,6 @@ fn main()
 	// to run them and then exit
 	config::configure(general_context, tool_context);
 
-	print!("Past configure...\n");
 	if tool_context.should_quit
 	{ return; }
 
@@ -194,7 +208,6 @@ fn main()
 	// enter them if they're not in-memory.
 	config::prompt_for_config_values(general_context, tool_context);
 
-	print!("Running manifest logic...\n");
 	// Main logic for manifest generation finally proceeds!
 	manifest::generate_manifest(general_context, tool_context);
 
